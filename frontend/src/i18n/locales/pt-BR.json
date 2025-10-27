@@ -93,18 +93,29 @@
     "intro": "Avalie seu domínio por módulo e forneça evidências.",
     "evidence": "Evidências",
     "submit": "Salvar avaliação",
-    "success": "Avaliação registrada com sucesso!"
+    "success": "Avaliação registrada com sucesso!",
+    "selectPlan": "Selecione o plano que deseja autoavaliar",
+    "noPlans": "Ainda não há planos de carreira disponíveis para você.",
+    "noPlanModules": "O plano selecionado não possui módulos definidos."
   },
   "manager": {
     "title": "Revisão do Gestor",
     "selectCollaborator": "Selecione um colaborador",
+    "selectPlan": "Selecione um plano de carreira",
     "comment": "Comentário",
     "targetLevel": "Nível alvo",
     "saveAssessment": "Salvar avaliação",
     "plan": "Plano de carreira",
     "objectives": "Objetivos",
     "dueDate": "Prazo",
-    "planSuccess": "Plano salvo com sucesso!"
+    "planSuccess": "Plano salvo com sucesso!",
+    "planUpdated": "Plano atualizado com sucesso!",
+    "planDeleted": "Plano removido com sucesso!",
+    "planModules": "Módulos foco",
+    "planModulesPlaceholder": "Selecione os módulos do plano",
+    "noPlanModules": "O plano selecionado não possui módulos definidos.",
+    "noPlansMessage": "Nenhum plano criado para este colaborador. Utilize o formulário abaixo.",
+    "deletePlanConfirm": "Deseja remover este plano de carreira?"
   },
   "reports": {
     "title": "Relatórios",

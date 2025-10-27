@@ -5,14 +5,67 @@ import { prisma } from '../lib/prisma';
 import { authenticate } from '../middlewares/authenticate';
 import { authorizeRoles } from '../middlewares/authorize';
 import { skillLevelScore } from '../utils/skill-level';
+import { requireCollaboratorProfile } from '../utils/collaborator';
 
 const router = Router();
 
 router.get(
   '/kpis',
   authenticate,
-  authorizeRoles(Role.MASTER),
-  async (_req, res) => {
+  authorizeRoles(Role.MASTER, Role.COLABORADOR),
+  async (req, res) => {
+    if (req.user?.role === Role.COLABORADOR) {
+      try {
+        const profile = await requireCollaboratorProfile(req.user.id);
+
+        const [totalModules, claims, assessments] = await Promise.all([
+          prisma.moduleRoutine.count(),
+          prisma.skillClaim.findMany({
+            where: { collaboratorId: profile.id },
+          }),
+          prisma.managerAssessment.findMany({
+            where: { collaboratorId: profile.id },
+          }),
+        ]);
+
+        const claimMap = new Map<string, SkillLevel>();
+        claims.forEach((claim) => {
+          claimMap.set(claim.moduleId, claim.currentLevel);
+        });
+
+        const gaps = assessments
+          .map((assessment) => {
+            const claimLevel = claimMap.get(assessment.moduleId);
+            if (!claimLevel) return null;
+            return (
+              skillLevelScore[assessment.targetLevel] - skillLevelScore[claimLevel]
+            );
+          })
+          .filter((gap): gap is number => gap !== null);
+
+        const averageGap =
+          gaps.length > 0
+            ? Number(
+                (gaps.reduce((acc, gap) => acc + gap, 0) / gaps.length).toFixed(2),
+              )
+            : 0;
+
+        return res.json({
+          totalCollaborators: 1,
+          totalModules,
+          totalClaims: claims.length,
+          totalAssessments: assessments.length,
+          averageGap,
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível localizar o perfil do colaborador.';
+        return res.status(400).json({ message });
+      }
+    }
+
     const [totalCollaborators, totalModules, totalClaims, assessments, claims] =
       await Promise.all([
         prisma.collaboratorProfile.count(),
@@ -71,8 +124,61 @@ router.get(
 router.get(
   '/trends',
   authenticate,
-  authorizeRoles(Role.MASTER),
-  async (_req, res) => {
+  authorizeRoles(Role.MASTER, Role.COLABORADOR),
+  async (req, res) => {
+    if (req.user?.role === Role.COLABORADOR) {
+      try {
+        const profile = await requireCollaboratorProfile(req.user.id);
+
+        const [claims, assessments, modules] = await Promise.all([
+          prisma.skillClaim.findMany({ where: { collaboratorId: profile.id } }),
+          prisma.managerAssessment.findMany({
+            where: { collaboratorId: profile.id },
+          }),
+          prisma.moduleRoutine.findMany(),
+        ]);
+
+        const levelDistribution = Object.values(SkillLevel).map((level) => ({
+          level,
+          count: claims.filter((claim) => claim.currentLevel === level).length,
+        }));
+
+        const gapByModule = assessments.map((assessment) => {
+          const module = modules.find((item) => item.id === assessment.moduleId);
+          const claim = claims.find((item) => item.moduleId === assessment.moduleId);
+
+          if (!module || !claim) {
+            return null;
+          }
+
+          const gap =
+            skillLevelScore[assessment.targetLevel] - skillLevelScore[claim.currentLevel];
+
+          return {
+            moduleId: module.id,
+            moduleCode: module.code,
+            moduleDescription: module.description,
+            gap: Number(gap.toFixed(2)),
+          };
+        });
+
+        const filteredGaps = gapByModule
+          .filter((item): item is NonNullable<typeof item> => item !== null)
+          .sort((a, b) => (b.gap ?? 0) - (a.gap ?? 0));
+
+        return res.json({
+          levelDistribution,
+          topGaps: filteredGaps.slice(0, 5),
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível localizar o perfil do colaborador.';
+        return res.status(400).json({ message });
+      }
+    }
+
     const [claims, assessments, modules] = await Promise.all([
       prisma.skillClaim.findMany(),
       prisma.managerAssessment.findMany(),

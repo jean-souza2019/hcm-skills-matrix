@@ -62,6 +62,7 @@ model ModuleRoutine {
 
   skillClaims SkillClaim[]
   assessments ManagerAssessment[]
+  careerPlanModules CareerPlanModule[]
 
   @@map("module_routines")
 }
@@ -108,8 +109,22 @@ model CareerPlan {
   updatedAt      DateTime             @updatedAt
 
   collaborator CollaboratorProfile @relation(fields: [collaboratorId], references: [id], onDelete: Cascade)
+  modules      CareerPlanModule[]
 
   @@map("career_plans")
+}
+
+model CareerPlanModule {
+  id           String      @id @default(cuid())
+  careerPlanId String
+  moduleId     String
+  createdAt    DateTime    @default(now())
+
+  careerPlan CareerPlan  @relation(fields: [careerPlanId], references: [id], onDelete: Cascade)
+  module     ModuleRoutine @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([careerPlanId, moduleId])
+  @@map("career_plan_modules")
 }
 
 model AuditLog {

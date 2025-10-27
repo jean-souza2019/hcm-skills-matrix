@@ -26,7 +26,16 @@ const careerPlanSchema = z.object({
   objectives: z.string().min(3),
   dueDate: z.coerce.date().optional().nullable(),
   notes: z.string().optional().nullable(),
+  moduleIds: z.array(z.string().cuid()).optional(),
 });
+
+const careerPlanInclude = {
+  modules: {
+    include: {
+      module: true,
+    },
+  },
+} as const;
 
 router.post(
   '/',
@@ -92,6 +101,7 @@ router.post(
   validate(careerPlanSchema),
   async (req, res) => {
     const payload = req.body as z.infer<typeof careerPlanSchema>;
+    const moduleIds = payload.moduleIds ?? [];
 
     const plan = await prisma.careerPlan.create({
       data: {
@@ -99,7 +109,11 @@ router.post(
         objectives: payload.objectives,
         dueDate: payload.dueDate ?? undefined,
         notes: payload.notes ?? undefined,
+        modules: {
+          create: moduleIds.map((moduleId) => ({ moduleId })),
+        },
       },
+      include: careerPlanInclude,
     });
 
     return res.status(201).json(plan);
@@ -133,18 +147,57 @@ router.put(
       data.notes = payload.notes ?? null;
     }
 
-    if (Object.keys(data).length === 0) {
+    const hasScalarUpdates = Object.keys(data).length > 0;
+    const hasModuleUpdate = Array.isArray(payload.moduleIds);
+
+    if (!hasScalarUpdates && !hasModuleUpdate) {
       return res.status(400).json({
         message: 'Informe pelo menos um campo para atualizar.',
       });
     }
 
-    const plan = await prisma.careerPlan.update({
-      where: { id },
-      data,
+    const moduleIds = hasModuleUpdate ? payload.moduleIds ?? [] : null;
+
+    const plan = await prisma.$transaction(async (tx) => {
+      if (hasModuleUpdate && moduleIds) {
+        await tx.careerPlanModule.deleteMany({ where: { careerPlanId: id } });
+        if (moduleIds.length > 0) {
+          await tx.careerPlanModule.createMany({
+            data: moduleIds.map((moduleId) => ({ careerPlanId: id, moduleId })),
+          });
+        }
+      }
+
+      if (hasScalarUpdates) {
+        await tx.careerPlan.update({
+          where: { id },
+          data,
+        });
+      }
+
+      return tx.careerPlan.findUnique({
+        where: { id },
+        include: careerPlanInclude,
+      });
     });
 
     return res.json(plan);
+  },
+);
+
+router.delete(
+  '/career-plans/:id',
+  authenticate,
+  authorizeRoles(Role.MASTER),
+  async (req, res) => {
+    const { id } = req.params;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.careerPlanModule.deleteMany({ where: { careerPlanId: id } });
+      await tx.careerPlan.delete({ where: { id } });
+    });
+
+    return res.status(204).send();
   },
 );
 
@@ -178,6 +231,7 @@ router.get(
     const plans = await prisma.careerPlan.findMany({
       where: targetCollaboratorId ? { collaboratorId: targetCollaboratorId } : {},
       orderBy: { createdAt: 'desc' },
+      include: careerPlanInclude,
     });
 
     return res.json(plans);

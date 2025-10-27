@@ -90,6 +90,14 @@ async function ensureUserCreation(
       email,
       passwordHash,
       role: Role.COLABORADOR,
+    },
+  });
+
+  // set mustChangePassword in a separate update because the create input type
+  // does not include that property
+  await tx.user.update({
+    where: { id: user.id },
+    data: {
       mustChangePassword: true,
     },
   });

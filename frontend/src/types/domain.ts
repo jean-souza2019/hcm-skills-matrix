@@ -59,6 +59,13 @@ export interface CareerPlan {
   dueDate?: string | null
   notes?: string | null
   createdAt?: string
+  modules?: CareerPlanModule[]
+}
+
+export interface CareerPlanModule {
+  id: string
+  moduleId: string
+  module?: ModuleRoutine
 }
 
 export interface CoverageEntry {

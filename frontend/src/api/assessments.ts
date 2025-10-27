@@ -40,6 +40,7 @@ export interface CareerPlanPayload {
   objectives: string
   dueDate?: string | null
   notes?: string | null
+  moduleIds?: string[]
 }
 
 export async function createCareerPlan(payload: CareerPlanPayload) {
@@ -63,4 +64,8 @@ export async function listCareerPlans(collaboratorId?: string) {
     query ? `/assessments/career-plans?${query}` : '/assessments/career-plans',
   )
   return data
+}
+
+export async function removeCareerPlan(id: string) {
+  await api.delete(`/assessments/career-plans/${id}`)
 }
