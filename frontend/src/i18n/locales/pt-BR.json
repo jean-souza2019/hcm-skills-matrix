@@ -1,0 +1,139 @@
+{
+  "app": {
+    "title": "HCM Skills Matrix",
+    "logout": "Sair",
+    "welcome": "Bem-vindo, {{name}}",
+    "signedOut": "Sessão encerrada."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "collaborators": "Colaboradores",
+    "modules": "Módulos",
+    "selfAssessment": "Autoavaliação",
+    "managerReview": "Revisão do gestor",
+    "reports": "Relatórios"
+  },
+  "login": {
+    "title": "Acesse sua conta",
+    "email": "E-mail",
+    "password": "Senha",
+    "submit": "Entrar",
+    "error": "Credenciais inválidas. Verifique seus dados."
+  },
+  "filters": {
+    "search": "Buscar",
+    "clear": "Limpar",
+    "collaborator": "Colaborador",
+    "module": "Módulo",
+    "activity": "Atividade",
+    "category": "Categoria",
+    "all": "Todos",
+    "select": "Selecione..."
+  },
+  "common": {
+    "actions": "Ações",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "edit": "Editar",
+    "delete": "Excluir",
+    "create": "Cadastrar",
+    "update": "Atualizar",
+    "view": "Visualizar",
+    "loading": "Carregando...",
+    "noData": "Nenhum registro encontrado.",
+    "required": "Campo obrigatório",
+    "export": "Exportar",
+    "error": "Ocorreu um erro.",
+    "close": "Fechar",
+    "confirm": "Confirmar"
+  },
+  "collaborators": {
+    "title": "Colaboradores",
+    "create": "Novo colaborador",
+    "edit": "Editar colaborador",
+    "name": "Nome completo",
+    "admissionDate": "Data de admissão",
+    "activities": "Atividades",
+    "notes": "Observações",
+    "success": "Colaborador salvo com sucesso!",
+    "deleted": "Colaborador removido com sucesso!",
+    "activitiesPlaceholder": "Selecione ou digite as atividades",
+    "access": "Acesso",
+    "noAccess": "Sem acesso",
+    "accessSectionTitle": "Liberar acesso ao portal",
+    "createAccess": "Criar usuário automaticamente",
+    "accessEmail": "E-mail de acesso",
+    "accessHelper": "O colaborador receberá esse e-mail e uma senha temporária.",
+    "accessExisting": "Este colaborador já possui acesso através do e-mail {{email}}.",
+    "accessDialogTitle": "Acesso criado com sucesso",
+    "accessDialogInfo": "Compartilhe o e-mail e a senha temporária. O colaborador deverá alterá-la no primeiro login.",
+    "accessPassword": "Senha temporária",
+    "copy": "Copiar",
+    "copied": "Informação copiada!",
+    "copyError": "Não foi possível copiar o texto.",
+    "deleteTitle": "Remover colaborador",
+    "deleteConfirm": "Remover colaborador {{name}}? Esta ação é irreversível.",
+    "resetAccess": "Resetar acesso",
+    "resetAccessConfirm": "Deseja gerar uma nova senha temporária para {{name}}? O acesso atual será invalidado.",
+    "resetAccessSuccess": "Nova senha temporária gerada com sucesso!",
+    "resetAccessError": "Não foi possível resetar o acesso."
+  },
+  "modules": {
+    "title": "Módulos/Rotinas",
+    "create": "Novo módulo",
+    "code": "Código",
+    "description": "Descrição",
+    "observation": "Observação",
+    "category": "Categoria",
+    "success": "Módulo salvo com sucesso!",
+    "deleted": "Módulo removido com sucesso!"
+  },
+  "selfAssessment": {
+    "title": "Autoavaliação",
+    "intro": "Avalie seu domínio por módulo e forneça evidências.",
+    "evidence": "Evidências",
+    "submit": "Salvar avaliação",
+    "success": "Avaliação registrada com sucesso!"
+  },
+  "manager": {
+    "title": "Revisão do Gestor",
+    "selectCollaborator": "Selecione um colaborador",
+    "comment": "Comentário",
+    "targetLevel": "Nível alvo",
+    "saveAssessment": "Salvar avaliação",
+    "plan": "Plano de carreira",
+    "objectives": "Objetivos",
+    "dueDate": "Prazo",
+    "planSuccess": "Plano salvo com sucesso!"
+  },
+  "reports": {
+    "title": "Relatórios",
+    "coverage": "Cobertura por colaborador",
+    "exportCsv": "Exportar CSV",
+    "exportPdf": "Exportar PDF",
+    "gap": "Gap",
+    "emptyExport": "Selecione um colaborador e aplique filtros válidos para exportar."
+  },
+  "passwordChange": {
+    "title": "Defina uma nova senha",
+    "subtitle": "Detectamos que este é seu primeiro acesso. Altere a senha temporária para continuar.",
+    "current": "Senha atual",
+    "new": "Nova senha",
+    "confirm": "Confirme a nova senha",
+    "submit": "Atualizar senha",
+    "success": "Senha alterada com sucesso!",
+    "error": "Não foi possível alterar a senha. Verifique os dados e tente novamente.",
+    "mismatch": "As senhas não coincidem."
+  },
+  "dashboard": {
+    "kpis": {
+      "collaborators": "Colaboradores",
+      "modules": "Módulos",
+      "claims": "Autoavaliações",
+      "assessments": "Avaliações",
+      "averageGap": "Gap médio"
+    },
+    "distribution": "Distribuição de níveis",
+    "topGaps": "Principais gaps"
+  }
+}
