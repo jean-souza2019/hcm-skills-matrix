@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# HCM Skills Matrix – Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicação web responsável pela interface do sistema de matriz de competências. Construída com React, Vite e Material UI e
+empacotada com Electron para distribuição desktop.
 
-Currently, two official plugins are available:
+## Requisitos
+- Node.js >= 18.18 (use a versão definida em `.nvmrc` para evitar incompatibilidades)
+- Yarn 1.22.x
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Configuração
+1. Copie as variáveis de ambiente:
+   ```bash
+   cp .env.example .env
+   ```
+2. Ajuste `VITE_API_URL` apontando para a URL da API. Em desenvolvimento, use `http://localhost:3333`.
+3. Instale as dependências:
+   ```bash
+   yarn install
+   ```
 
-## React Compiler
+## Scripts úteis
+- `yarn dev`: inicia o app em modo desenvolvimento (porta padrão 5173) com hot reload.
+- `yarn preview`: executa o build e serve a versão empacotada para teste local.
+- `yarn build`: gera a versão web de produção em `dist/`.
+- `yarn build:desktop`: cria o build web e empacota um instalador Windows em `dist-desktop/` usando Electron Builder.
+- `yarn lint`: roda ESLint nos arquivos `.ts`/`.tsx`.
+- `yarn test` / `yarn test:watch`: executa os testes unitários com Vitest.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Integração com a API
+A aplicação consome o backend via Axios. O `src/api/client.ts` injeta o token JWT armazenado pelo `zustand` no header
+`Authorization`. Garanta que:
+- O backend esteja rodando (`yarn dev` no diretório `backend`).
+- O CORS esteja liberado (já configurado na API).
+- O arquivo `.env` aponte para a URL correta da API.
 
-## Expanding the ESLint configuration
+## Estrutura principal
+- `src/api`: clientes HTTP organizados por domínio (auth, colaboradores, módulos, relatórios etc.).
+- `src/components`: componentes reutilizáveis, incluindo layouts, formulários e widgets de dashboard.
+- `src/hooks`: hooks customizados; por exemplo, `useAuthBootstrap` sincroniza o usuário logado.
+- `src/pages`: telas agrupadas por contexto (dashboard, colaboradores, autoavaliação, relatórios...).
+- `src/providers`: provedores globais (React Query, tema MUI, Snackbar).
+- `src/router`: rotas protegidas e mapeamento de páginas.
+- `src/store`: estado global com Zustand (armazenamento do token e dados do usuário).
+- `src/theme.ts`: paleta e overrides do Material UI.
+- `electron/`: script principal do Electron usado no build desktop.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Build desktop
+O comando `yarn build:desktop` gera um instalador Windows (`.exe`). Para distribuição, combine-o com o executável da API gerado
+em `backend` (`yarn build:exe`). Em ambiente local, é recomendado validar o pacote executando:
+```bash
+yarn build:desktop
+open dist-desktop
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Dicas de desenvolvimento
+- Ajuste o arquivo `src/theme.ts` para personalizações de UI.
+- Use os serviços de `src/api` com React Query para garantir cache e revalidação automática.
+- Antes de abrir PRs, execute `yarn lint && yarn test` para evitar falhas na pipeline.
