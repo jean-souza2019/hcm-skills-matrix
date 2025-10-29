@@ -3,7 +3,6 @@
 
 # Environment files
 .env
-.env.*
 
 # Node
 node_modules
@@ -11,4 +10,5 @@ pnpm-debug.log*
 
 # Build outputs
 dist
+build
 coverage

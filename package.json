@@ -1,0 +1,9 @@
+{
+  "name": "hcm-skills-matrix",
+  "private": true,
+  "scripts": {
+    "build:api": "yarn --cwd backend build:exe",
+    "build:desktop": "yarn --cwd frontend build:desktop",
+    "build:win": "yarn build:api && yarn build:desktop"
+  }
+}
