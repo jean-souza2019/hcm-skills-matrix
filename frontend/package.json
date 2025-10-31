@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:desktop": "yarn build && electron-builder --win --x64",
+    "build:desktop": "yarn generate:icon && yarn build && electron-builder --win --x64",
+    "generate:icon": "node scripts/generate-icon.cjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
@@ -84,8 +85,15 @@
     ],
     "asar": true,
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
+      "icon": "electron/assets/app-icon.ico",
       "artifactName": "hcm-skills-matrix-Setup-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   },
   "packageManager": "yarn@1.22.22"

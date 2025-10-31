@@ -1,0 +1,31 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0C2B4C"/>
+      <stop offset="100%" stop-color="#15518E"/>
+    </linearGradient>
+    <linearGradient id="body" x1="50%" y1="30%" x2="50%" y2="95%">
+      <stop offset="0%" stop-color="#56C0F2"/>
+      <stop offset="100%" stop-color="#2D8CE0"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="116" height="116" rx="24" fill="url(#bg)" />
+  <g opacity="0.75" stroke="#2680D4" stroke-width="4" stroke-linecap="round">
+    <path d="M32 24V104"/>
+    <path d="M64 24V104"/>
+    <path d="M96 24V104"/>
+    <path d="M24 40H104"/>
+    <path d="M24 64H104"/>
+    <path d="M24 88H104"/>
+  </g>
+  <g fill="#6FD4FF" opacity="0.85">
+    <rect x="28" y="36" width="10" height="10" rx="2"/>
+    <rect x="54" y="60" width="10" height="10" rx="2"/>
+    <rect x="86" y="84" width="10" height="10" rx="2"/>
+  </g>
+  <circle cx="64" cy="44" r="16" fill="#FFE3B0" stroke="#F6C37B" stroke-width="2"/>
+  <path d="M42 92c0-18 10-32 22-32s22 14 22 32v14H42V92Z" fill="url(#body)"/>
+  <path d="M54 86c3-6 9-10 10-10s7 4 10 10H54Z" fill="#1E68C9" opacity="0.65"/>
+  <circle cx="70" cy="40" r="5" fill="#FFFFFF" opacity="0.7"/>
+  <path d="M22 112c8 6 24 10 42 10s34-4 42-10H22Z" fill="#0B203B" opacity="0.35"/>
+</svg>

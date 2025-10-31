@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -58,11 +58,14 @@ function stopBackend() {
 }
 
 function createWindow() {
+  const iconPath = path.join(__dirname, 'assets', 'app-icon.ico');
+
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1024,
     minHeight: 640,
+    icon: iconPath,
     webPreferences: {
       sandbox: false,
     },
@@ -80,6 +83,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   startBackend();
   createWindow();
 
