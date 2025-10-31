@@ -28,6 +28,10 @@
     "assets": [
       "node_modules/.prisma/client/**/*",
       "prisma/schema.prisma"
+    ],
+    "scripts": [
+      "node_modules/.prisma/client/**/*.js",
+      "node_modules/.prisma/client/**/*.mjs"
     ]
   },
   "dependencies": {

@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 
 import { runtimeEnv } from '../config/env';
+import { logError } from '../utils/logger';
 
 export function errorHandler(
   error: unknown,
@@ -9,8 +10,7 @@ export function errorHandler(
   _next: NextFunction,
 ) {
   if (runtimeEnv.NODE_ENV !== 'test') {
-    // eslint-disable-next-line no-console
-    console.error(error);
+    logError('Unhandled application error', error);
   }
 
   return res.status(500).json({
