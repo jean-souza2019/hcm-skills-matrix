@@ -1,12 +1,17 @@
-import { Role, SkillLevel } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
 
-import { prisma } from '../lib/prisma';
+import { Role, SkillLevel } from '../domain/enums';
 import { authenticate } from '../middlewares/authenticate';
 import { authorizeRoles } from '../middlewares/authorize';
 import { validate } from '../middlewares/validate';
-import { requireCollaboratorProfile } from '../utils/collaborator';
+import {
+  findSkillClaimById,
+  listSkillClaims,
+  updateSkillClaim,
+  upsertSkillClaim,
+} from '../repositories/skill-claims.repository';
+import { findCollaboratorProfileByUserId, requireCollaboratorProfile } from '../utils/collaborator';
 
 const router = Router();
 
@@ -35,39 +40,22 @@ router.post(
     const payload = req.body as z.infer<typeof claimSchema>;
     const user = req.user!;
 
-    let collaboratorId: string;
     try {
       const profile = await requireCollaboratorProfile(user.id);
-      collaboratorId = profile.id;
-    } catch (error) {
-      return res.status(400).json({
-        message: error instanceof Error ? error.message : 'Perfil inexistente.',
-      });
-    }
 
-    const claim = await prisma.skillClaim.upsert({
-      where: {
-        collaboratorId_moduleId: {
-          collaboratorId,
-          moduleId: payload.moduleId,
-        },
-      },
-      update: {
-        currentLevel: payload.currentLevel,
-        evidence: payload.evidence ?? undefined,
-      },
-      create: {
-        collaboratorId,
+      const claim = await upsertSkillClaim({
+        collaboratorId: profile.id,
         moduleId: payload.moduleId,
         currentLevel: payload.currentLevel,
-        evidence: payload.evidence ?? undefined,
-      },
-      include: {
-        module: true,
-      },
-    });
+        evidence: payload.evidence ?? null,
+      });
 
-    return res.status(201).json(claim);
+      return res.status(201).json(claim);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Perfil inexistente.';
+      return res.status(400).json({ message });
+    }
   },
 );
 
@@ -89,26 +77,18 @@ router.get(
         const profile = await requireCollaboratorProfile(user.id);
         targetCollaboratorId = profile.id;
       } catch (error) {
-        return res.status(400).json({
-          message: error instanceof Error ? error.message : 'Perfil inexistente.',
-        });
+        const message =
+          error instanceof Error ? error.message : 'Perfil inexistente.';
+        return res.status(400).json({ message });
       }
     } else if (me) {
-      const profile = await prisma.collaboratorProfile.findUnique({
-        where: { userId: user.id },
-      });
+      const profile = await findCollaboratorProfileByUserId(user.id);
       targetCollaboratorId = profile?.id ?? undefined;
     }
 
-    const where = targetCollaboratorId
-      ? { collaboratorId: targetCollaboratorId }
-      : undefined;
-
-    const claims = await prisma.skillClaim.findMany({
-      where,
-      include: {
-        module: true,
-      },
+    const claims = await listSkillClaims({
+      collaboratorId: targetCollaboratorId,
+      includeModule: true,
     });
 
     return res.json(claims);
@@ -126,33 +106,30 @@ router.put(
     const user = req.user!;
 
     let collaboratorId: string;
+
     try {
       const profile = await requireCollaboratorProfile(user.id);
       collaboratorId = profile.id;
     } catch (error) {
-      return res.status(400).json({
-        message: error instanceof Error ? error.message : 'Perfil inexistente.',
-      });
+      const message =
+        error instanceof Error ? error.message : 'Perfil inexistente.';
+      return res.status(400).json({ message });
     }
 
-    const existing = await prisma.skillClaim.findUnique({
-      where: { id },
-    });
+    const existing = await findSkillClaimById(id);
 
     if (!existing || existing.collaboratorId !== collaboratorId) {
-      return res.status(404).json({ message: 'Registro não encontrado.' });
+      return res.status(404).json({ message: 'Registro nao encontrado.' });
     }
 
-    const updated = await prisma.skillClaim.update({
-      where: { id },
-      data: {
-        ...(payload.currentLevel ? { currentLevel: payload.currentLevel } : {}),
-        evidence: payload.evidence ?? undefined,
-      },
-      include: {
-        module: true,
-      },
+    const updated = await updateSkillClaim(id, {
+      currentLevel: payload.currentLevel,
+      evidence: payload.evidence ?? null,
     });
+
+    if (!updated) {
+      return res.status(404).json({ message: 'Registro nao encontrado.' });
+    }
 
     return res.json(updated);
   },

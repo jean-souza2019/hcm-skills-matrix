@@ -1,13 +1,28 @@
-import { Prisma, Role } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
 import { hash } from 'bcryptjs';
 
-import { prisma } from '../lib/prisma';
+import { Role } from '../domain/enums';
 import { authenticate } from '../middlewares/authenticate';
 import { authorizeRoles } from '../middlewares/authorize';
 import { validate } from '../middlewares/validate';
 import { generateTemporaryPassword } from '../utils/password';
+import {
+  createCollaborator,
+  deleteCollaborator,
+  findCollaboratorDetail,
+  findCollaboratorWithUserById,
+  listCollaborators,
+  listCollaboratorsRaw,
+  updateCollaborator,
+} from '../repositories/collaborators.repository';
+import {
+  createUser,
+  deleteUserById,
+  findUserByEmail,
+  updateUser,
+} from '../repositories/users.repository';
+import { withTransaction } from '../lib/database';
 
 const router = Router();
 
@@ -26,7 +41,7 @@ const collaboratorSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['accessEmail'],
-        message: 'Informe um e-mail válido para criar o acesso.',
+        message: 'Informe um e-mail valido para criar o acesso.',
       });
     }
   });
@@ -38,22 +53,17 @@ const querySchema = z.object({
   activity: z.string().optional(),
 });
 
-const collaboratorInclude = {
-  user: {
-    select: {
-      id: true,
-      email: true,
-    },
-  },
-} as const;
-
 type CollaboratorPayload = z.infer<typeof collaboratorSchema>;
 
+type AccessCredentials = {
+  email: string;
+  temporaryPassword: string;
+};
+
 async function ensureUserCreation(
-  tx: Prisma.TransactionClient,
   payload: CollaboratorPayload,
   existingUserId?: string | null,
-) {
+): Promise<{ userId?: string | null; credentials: AccessCredentials | null }> {
   if (existingUserId) {
     return {
       userId: existingUserId,
@@ -63,7 +73,7 @@ async function ensureUserCreation(
 
   if (!payload.createAccess) {
     return {
-      userId: payload.userId ?? undefined,
+      userId: payload.userId ?? null,
       credentials: null,
     };
   }
@@ -74,9 +84,7 @@ async function ensureUserCreation(
     throw new Error('ACCESS_EMAIL_REQUIRED');
   }
 
-  const alreadyExists = await tx.user.findUnique({
-    where: { email },
-  });
+  const alreadyExists = await findUserByEmail(email);
 
   if (alreadyExists) {
     throw new Error('ACCESS_EMAIL_IN_USE');
@@ -85,21 +93,11 @@ async function ensureUserCreation(
   const temporaryPassword = generateTemporaryPassword();
   const passwordHash = await hash(temporaryPassword, 10);
 
-  const user = await tx.user.create({
-    data: {
-      email,
-      passwordHash,
-      role: Role.COLABORADOR,
-    },
-  });
-
-  // set mustChangePassword in a separate update because the create input type
-  // does not include that property
-  await tx.user.update({
-    where: { id: user.id },
-    data: {
-      mustChangePassword: true,
-    },
+  const user = await createUser({
+    email,
+    passwordHash,
+    role: Role.COLABORADOR,
+    mustChangePassword: true,
   });
 
   return {
@@ -120,22 +118,15 @@ router.post(
     const payload = req.body as CollaboratorPayload;
 
     try {
-      const result = await prisma.$transaction(async (tx) => {
-        const { userId, credentials } = await ensureUserCreation(
-          tx,
-          payload,
-          payload.userId ?? undefined,
-        );
+      const result = await withTransaction(async () => {
+        const { userId, credentials } = await ensureUserCreation(payload);
 
-        const collaborator = await tx.collaboratorProfile.create({
-          data: {
-            fullName: payload.fullName,
-            admissionDate: payload.admissionDate,
-            activities: payload.activities ?? [],
-            notes: payload.notes ?? undefined,
-            userId,
-          },
-          include: collaboratorInclude,
+        const collaborator = await createCollaborator({
+          fullName: payload.fullName,
+          admissionDate: payload.admissionDate,
+          activities: payload.activities ?? [],
+          notes: payload.notes ?? null,
+          userId: userId ?? null,
         });
 
         return { collaborator, credentials };
@@ -150,42 +141,40 @@ router.post(
         if (error.message === 'ACCESS_EMAIL_IN_USE') {
           return res
             .status(409)
-            .json({ message: 'Já existe um usuário cadastrado com este e-mail.' });
+            .json({ message: 'Ja existe um usuario cadastrado com este e-mail.' });
         }
+
         if (error.message === 'ACCESS_EMAIL_REQUIRED') {
-          return res.status(400).json({ message: 'Informe o e-mail para criar o acesso.' });
+          return res
+            .status(400)
+            .json({ message: 'Informe o e-mail para criar o acesso.' });
         }
       }
+
       throw error;
     }
   },
 );
 
 router.get(
-  '/', authenticate, authorizeRoles(Role.MASTER), validate(querySchema, 'query'), async (req, res) => {
+  '/',
+  authenticate,
+  authorizeRoles(Role.MASTER),
+  validate(querySchema, 'query'),
+  async (req, res) => {
     const { page, perPage, name, activity } = req.query as unknown as z.infer<
       typeof querySchema
     >;
 
     const normalizedName = name?.trim();
 
-    const baseWhere = normalizedName
-      ? {
-          fullName: {
-            contains: normalizedName,
-          },
-        }
-      : {};
     if (activity) {
-      const all = await prisma.collaboratorProfile.findMany({
-        where: baseWhere,
-        orderBy: { fullName: 'asc' },
+      const all = await listCollaboratorsRaw({
+        name: normalizedName,
       });
 
       const filtered = all.filter((item) =>
-        Array.isArray(item.activities)
-          ? item.activities.includes(activity)
-          : false,
+        item.activities.includes(activity),
       );
 
       const start = (page - 1) * perPage;
@@ -202,19 +191,14 @@ router.get(
       });
     }
 
-    const [total, items] = await Promise.all([
-      prisma.collaboratorProfile.count({ where: baseWhere }),
-      prisma.collaboratorProfile.findMany({
-        where: baseWhere,
-        orderBy: { fullName: 'asc' },
-        skip: (page - 1) * perPage,
-        take: perPage,
-        include: collaboratorInclude,
-      }),
-    ]);
+    const { data, total } = await listCollaborators({
+      page,
+      perPage,
+      name: normalizedName,
+    });
 
     return res.json({
-      data: items,
+      data,
       meta: {
         page,
         perPage,
@@ -232,18 +216,10 @@ router.get(
   async (req, res) => {
     const { id } = req.params;
 
-    const collaborator = await prisma.collaboratorProfile.findUnique({
-      where: { id },
-      include: {
-        user: collaboratorInclude.user,
-        skillClaims: true,
-        assessments: true,
-        careerPlans: true,
-      },
-    });
+    const collaborator = await findCollaboratorDetail(id);
 
     if (!collaborator) {
-      return res.status(404).json({ message: 'Colaborador não encontrado.' });
+      return res.status(404).json({ message: 'Colaborador nao encontrado.' });
     }
 
     return res.json(collaborator);
@@ -259,56 +235,54 @@ router.put(
     const { id } = req.params;
     const payload = req.body as CollaboratorPayload;
 
-    const existing = await prisma.collaboratorProfile.findUnique({
-      where: { id },
-      select: {
-        userId: true,
-      },
-    });
+    const existing = await findCollaboratorWithUserById(id);
 
     if (!existing) {
-      return res.status(404).json({ message: 'Colaborador não encontrado.' });
+      return res.status(404).json({ message: 'Colaborador nao encontrado.' });
     }
 
     if (existing.userId && payload.createAccess) {
       return res
         .status(400)
-        .json({ message: 'O colaborador já possui um usuário vinculado.' });
+        .json({ message: 'O colaborador ja possui um usuario vinculado.' });
     }
 
     try {
-      const result = await prisma.$transaction(async (tx) => {
+      const result = await withTransaction(async () => {
         const { userId, credentials } = await ensureUserCreation(
-          tx,
           payload,
-          existing.userId ?? undefined,
+          existing.userId,
         );
 
-        const collaborator = await tx.collaboratorProfile.update({
-          where: { id },
-          data: {
-            fullName: payload.fullName,
-            admissionDate: payload.admissionDate,
-            activities: payload.activities ?? [],
-            notes: payload.notes ?? undefined,
-            userId,
-          },
-          include: collaboratorInclude,
+        const collaborator = await updateCollaborator(id, {
+          fullName: payload.fullName,
+          admissionDate: payload.admissionDate,
+          activities: payload.activities ?? [],
+          notes: payload.notes ?? null,
+          userId: userId ?? null,
         });
 
         return { collaborator, credentials };
       });
+
+      if (!result.collaborator) {
+        return res.status(404).json({ message: 'Colaborador nao encontrado.' });
+      }
 
       return res.json({
         collaborator: result.collaborator,
         accessCredentials: result.credentials ?? undefined,
       });
     } catch (error) {
-      if (error instanceof Error && error.message === 'ACCESS_EMAIL_IN_USE') {
-        return res.status(409).json({ message: 'Já existe um usuário cadastrado com este e-mail.' });
-      }
-      if (error instanceof Error && error.message === 'ACCESS_EMAIL_REQUIRED') {
-        return res.status(400).json({ message: 'Informe o e-mail para criar o acesso.' });
+      if (error instanceof Error) {
+        if (error.message === 'ACCESS_EMAIL_IN_USE') {
+          return res
+            .status(409)
+            .json({ message: 'Ja existe um usuario cadastrado com este e-mail.' });
+        }
+        if (error.message === 'ACCESS_EMAIL_REQUIRED') {
+          return res.status(400).json({ message: 'Informe o e-mail para criar o acesso.' });
+        }
       }
       throw error;
     }
@@ -322,26 +296,16 @@ router.delete(
   async (req, res) => {
     const { id } = req.params;
 
-    const collaborator = await prisma.collaboratorProfile.findUnique({
-      where: { id },
-      select: {
-        userId: true,
-      },
-    });
+    const collaborator = await findCollaboratorWithUserById(id);
 
     if (!collaborator) {
-      return res.status(404).json({ message: 'Colaborador não encontrado.' });
+      return res.status(404).json({ message: 'Colaborador nao encontrado.' });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.collaboratorProfile.delete({
-        where: { id },
-      });
-
+    await withTransaction(async () => {
+      await deleteCollaborator(id);
       if (collaborator.userId) {
-        await tx.user.delete({
-          where: { id: collaborator.userId },
-        });
+        await deleteUserById(collaborator.userId);
       }
     });
 
@@ -356,54 +320,32 @@ router.post(
   async (req, res) => {
     const { id } = req.params;
 
-    const collaborator = await prisma.collaboratorProfile.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        fullName: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const collaborator = await findCollaboratorWithUserById(id);
 
     if (!collaborator) {
-      return res.status(404).json({ message: 'Colaborador não encontrado.' });
+      return res.status(404).json({ message: 'Colaborador nao encontrado.' });
     }
 
     if (!collaborator.user) {
       return res.status(400).json({
-        message: 'Este colaborador ainda não possui usuário vinculado.',
+        message: 'Este colaborador ainda nao possui usuario vinculado.',
       });
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const temporaryPassword = generateTemporaryPassword();
-      const passwordHash = await hash(temporaryPassword, 10);
+    const temporaryPassword = generateTemporaryPassword();
+    const passwordHash = await hash(temporaryPassword, 10);
 
-      const updatedUser = await tx.user.update({
-        where: { id: collaborator.user!.id },
-        data: {
-          passwordHash,
-          mustChangePassword: true,
-        },
-        select: {
-          email: true,
-        },
-      });
-
-      return {
-        accessCredentials: {
-          email: updatedUser.email,
-          temporaryPassword,
-        },
-      };
+    await updateUser(collaborator.user.id, {
+      passwordHash,
+      mustChangePassword: true,
     });
 
-    return res.json(result);
+    return res.json({
+      accessCredentials: {
+        email: collaborator.user.email,
+        temporaryPassword,
+      },
+    });
   },
 );
 

@@ -1,101 +1,92 @@
 # HCM Skills Matrix – Backend
 
-API REST responsável pelas regras de negócio e persistência do sistema de matriz de competências. Implementada em
-Node.js/Express com Prisma ORM e banco SQLite por padrão.
+Backend REST API for the skills matrix product. Implemented with Node.js, Express and a manual SQLite data layer (no ORM).
 
-## Requisitos
-- Node.js >= 18.18 (utilize a versão definida em `.nvmrc` na raiz do monorepo)
+## Requirements
+
+- Node.js >= 18.18 (see `.nvmrc` in the monorepo root)
 - Yarn 1.22.x
-- SQLite (embarcado em arquivo, não requer serviço externo por padrão)
+- SQLite is embedded (no external service required).
 
-## Configuração
-1. Copie o arquivo de variáveis de ambiente:
+## Environment
+
+1. Copy the example env file:
+
    ```bash
    cp .env.example .env
    ```
-2. Ajuste os valores conforme necessário. Principais variáveis:
 
-| Variável             | Obrigatória | Descrição                                                     | Padrão        |
-| -------------------- | ----------- | ------------------------------------------------------------- | ------------- |
-| `PORT`               | opcional    | Porta HTTP utilizada pelo servidor.                           | `3333`        |
-| `NODE_ENV`           | opcional    | Ambiente de execução (`development`, `production`, `test`).   | `development` |
-| `JWT_SECRET`         | sim         | Segredo usado para assinar tokens JWT.                        | `super-secret-change-me` |
-| `JWT_EXPIRES_IN`     | opcional    | Tempo de expiração do token (qualquer valor aceito pelo JWT). | `1d`          |
-| `DATABASE_URL`       | sim         | URL de conexão Prisma (SQLite por padrão).                    | `file:./dev.db` |
-| `SEED_ADMIN_EMAIL`   | opcional    | E-mail padrão do usuário MASTER gerado pelo seed.             | `admin@hcm.local` |
-| `SEED_ADMIN_PASSWORD`| opcional    | Senha padrão do usuário MASTER gerado pelo seed.              | `Admin123!`   |
+2. Adjust values as needed. Key variables:
 
-3. Instale as dependências:
+   | Variable             | Required | Description                                               | Default              |
+   | -------------------- | -------- | --------------------------------------------------------- | -------------------- |
+   | `PORT`               | no       | HTTP port.                                                | `3333`               |
+   | `NODE_ENV`           | no       | Runtime environment (`development`, `production`, `test`) | `development`        |
+   | `JWT_SECRET`         | yes      | Secret used to sign JWT tokens.                           | `super-secret-change-me` |
+   | `JWT_EXPIRES_IN`     | no       | JWT expiration (any value supported by `jsonwebtoken`).   | `1d`                 |
+   | `DATABASE_URL`       | yes      | Path for the SQLite database file.                        | `file:./data/app.db` |
+  | `SEED_ADMIN_EMAIL`   | no       | Default MASTER user e-mail created by the seed.           | `admin@teste.com`    |
+  | `SEED_ADMIN_PASSWORD`| no       | Default MASTER password created by the seed.              | `1234567890`         |
+
+3. Install dependencies:
+
    ```bash
    yarn install
    ```
 
-## Scripts principais
-- `yarn dev`: sobe a API em modo desenvolvimento com `ts-node-dev`.
-- `yarn build`: compila o código TypeScript para `dist/`.
-- `yarn start`: executa a versão compilada de `dist/main.js`.
-- `yarn prisma:migrate`: aplica as migrations pendentes no banco configurado.
-- `yarn prisma:generate`: (re)gera o client Prisma.
-- `yarn prisma:reset`: recria o banco, reaplica migrations e limpa dados (sem prompts).
-- `yarn db:seed`: popula dados iniciais (usuário MASTER e módulos exemplo).
-- `yarn build:exe`: gera um binário Windows (`build/api.exe`) usando `pkg`.
+## Scripts
 
-## Banco de dados e migrations
-- O banco padrão é um arquivo SQLite localizado em `prisma/dev.db`.
-- Para aplicar migrations existentes, execute `yarn prisma:migrate`.
-- Para criar uma nova migration após alterar `prisma/schema.prisma`:
-  ```bash
-  yarn prisma migrate dev --name minha-migration
-  ```
-- Se precisar recomeçar do zero, use `yarn prisma:reset` e, em seguida, `yarn db:seed`.
+- `yarn dev`: runs the API in development mode with `ts-node-dev`.
+- `yarn build`: compiles TypeScript to `dist/`.
+- `yarn start`: runs the compiled bundle from `dist/main.js`.
+- `yarn build:exe`: builds and packages the API into a Windows executable with `pkg`.
+- `yarn db:seed`: populates the database with default admin and example modules.
+- `yarn test`: placeholder (no automated tests yet).
 
-## Seed
-O seed cria/atualiza um usuário MASTER e módulos exemplos. Ajuste as variáveis `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD` caso
-necessite outros valores. Execute:
-```bash
-yarn db:seed
-```
+## Database
 
-## Distribuição
-O comando `yarn build:exe` executa o build TypeScript e empacota a API em um executável Windows (`node18-win-x64`) dentro de
-`build/api.exe`. Certifique-se de que o arquivo `prisma/schema.prisma` e o diretório `.prisma/client` estejam presentes (o
-script já inclui esses assets no pacote).
+- The application now manages SQLite files directly. On startup it creates the database schema if the file does not exist.
+- When the API starts and the database file is brand new, the default seed (admin + demo modules) runs automatically.
+- The default file path is resolved from `DATABASE_URL`. For `file:./data/app.db` the file will be created inside `backend/data/`.
+- Existing Prisma migrations are no longer used. If you have legacy data in `prisma/dev.db`, copy it to the new location before starting the API.
+- After bootstrapping the database file you can run `yarn db:seed` to add the default admin user and demo modules.
 
-## Estrutura de pastas
-- `src/app.ts`: configuração do Express (middlewares, rotas e tratamento de erros).
-- `src/config`: carregamento e validação de variáveis de ambiente.
-- `src/lib`: instâncias compartilhadas (ex.: cliente Prisma).
-- `src/middlewares`: autenticação JWT, autorização por papel, validação com Zod e handler global de erros.
-- `src/routes`: agrupamento das rotas por domínio (`auth`, `users`, `collaborators`, `modules`, `skills`, `assessments`,
-  `reports`, `dashboard`).
-- `src/utils`: funções auxiliares (geração de senha temporária, cálculo de gaps, acesso ao perfil do colaborador).
-- `prisma/`: schema do banco, migrations e scripts de seed.
+## Project structure
 
-## Rotas disponíveis
-- `GET /healths`: verificação simples de saúde.
-- `POST /auth/login`: autenticação e emissão de token JWT.
-- `POST /auth/change-password`: troca de senha do usuário autenticado.
-- `GET /users/me`: retorna informações do usuário logado.
-- `CRUD /collaborators`: gestão de colaboradores, vinculação de usuários e reset de acesso.
-- `CRUD /modules`: cadastro de rotinas/módulos avaliados.
-- `POST /skills/claim`: autoavaliação do colaborador.
-- `GET /skills/claim`: listagem de autoavaliações (com filtros).
-- `PUT /skills/claim/:id`: atualização da autoavaliação do colaborador.
-- `POST /assessments`: avaliação do gestor para colaborador/módulo.
-- `GET /assessments`: lista avaliações por colaborador.
-- `POST /assessments/career-plans`: cria planos de carreira vinculados a módulos.
-- `PUT /assessments/career-plans/:id`: atualiza plano de carreira.
-- `DELETE /assessments/career-plans/:id`: remove plano de carreira e módulos associados.
-- `GET /assessments/career-plans`: lista planos de carreira (respeitando papel do usuário).
-- `GET /dashboard/kpis`: indicadores agregados (total de módulos, gaps etc.).
-- `GET /dashboard/trends`: análises de distribuição e principais gaps.
-- `GET /reports/coverage`: relatório de cobertura de competências (JSON ou CSV).
+- `src/app.ts`: Express app setup (middlewares, routes, error handler).
+- `src/config`: environment loading and validation.
+- `src/domain`: enums and entity definitions shared across repositories.
+- `src/lib`: cross-cutting helpers (database bootstrap, logger, etc.).
+- `src/middlewares`: authentication, authorization, validation, and error handling.
+- `src/repositories`: manual data access layer (SQLite queries per aggregate).
+- `src/routes`: domain routes (`auth`, `users`, `collaborators`, `modules`, `skills`, `assessments`, `reports`, `dashboard`).
+- `src/utils`: helpers for password generation, collaborator profile lookup, skill level math, logging.
 
-Todas as rotas, exceto `POST /auth/login` e `GET /healths`, exigem token JWT e validação de papéis (`MASTER` ou
-`COLABORADOR`), conforme definido nos middlewares `authenticate` e `authorizeRoles`.
+## API overview
 
-## Fluxo de desenvolvimento recomendado
-1. Inicie a API: `yarn dev`.
-2. Aplique migrations/seed se necessário (`yarn prisma:migrate`, `yarn db:seed`).
-3. Execute o frontend em paralelo (`yarn dev` no diretório `frontend`).
-4. Ao finalizar alterações de schema, rode `yarn prisma:generate` para atualizar o client.
+- `GET /healths`: health check.
+- `POST /auth/login`: authenticate and receive a JWT token.
+- `POST /auth/change-password`: change password for the authenticated user.
+- `GET /users/me`: current user profile.
+- `CRUD /collaborators`: manage collaborators, link/unlink user access, reset access.
+- `CRUD /modules`: register assessed modules/routines.
+- `POST /skills/claim`: collaborator self-assessment for a module.
+- `GET /skills/claim`: list self-assessments (with filters).
+- `PUT /skills/claim/:id`: update self-assessment.
+- `POST /assessments`: manager assessment for a collaborator/module.
+- `GET /assessments`: list assessments by collaborator.
+- `POST /assessments/career-plans`: create career plans and attach modules.
+- `PUT /assessments/career-plans/:id`: update career plan data/modules.
+- `DELETE /assessments/career-plans/:id`: delete plan and links.
+- `GET /assessments/career-plans`: list plans (permissions applied).
+- `GET /dashboard/kpis`: aggregated indicators (totals, average skill gap).
+- `GET /dashboard/trends`: distribution of skill levels and main gaps.
+- `GET /reports/coverage`: coverage report per collaborator (JSON or CSV).
+
+All routes except `POST /auth/login` and `GET /healths` require a valid JWT token and role-based permissions (`MASTER` or `COLABORADOR`) enforced by `authenticate` and `authorizeRoles` middlewares.
+
+## Development flow
+
+1. Start the API with `yarn dev`. The database schema will be bootstrapped automatically.
+2. Run the frontend (if applicable) from the monorepo root.
+3. Before shipping, run `yarn build` to ensure TypeScript output is clean.

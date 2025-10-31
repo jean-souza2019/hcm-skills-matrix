@@ -1,11 +1,16 @@
-import { Role } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
 
-import { prisma } from '../lib/prisma';
+import { Role } from '../domain/enums';
 import { authenticate } from '../middlewares/authenticate';
 import { authorizeRoles } from '../middlewares/authorize';
 import { validate } from '../middlewares/validate';
+import {
+  findCollaboratorWithUserById,
+} from '../repositories/collaborators.repository';
+import { listAllModules } from '../repositories/modules.repository';
+import { listSkillClaims } from '../repositories/skill-claims.repository';
+import { listAssessments } from '../repositories/assessments.repository';
 import { requireCollaboratorProfile } from '../utils/collaborator';
 import { skillLevelScore } from '../utils/skill-level';
 
@@ -34,37 +39,27 @@ router.get(
         const profile = await requireCollaboratorProfile(user.id);
         targetCollaboratorId = profile.id;
       } catch (error) {
-        return res.status(400).json({
-          message: error instanceof Error ? error.message : 'Perfil inexistente.',
-        });
+        const message =
+          error instanceof Error ? error.message : 'Perfil inexistente.';
+        return res.status(400).json({ message });
       }
     }
 
     if (!targetCollaboratorId) {
-      return res.status(400).json({
-        message: 'Informe um colaborador para gerar o relatório.',
-      });
+      return res
+        .status(400)
+        .json({ message: 'Informe um colaborador para gerar o relatorio.' });
     }
 
     const [collaborator, modules, claims, assessments] = await Promise.all([
-      prisma.collaboratorProfile.findUnique({
-        where: { id: targetCollaboratorId },
-        select: {
-          id: true,
-          fullName: true,
-        },
-      }),
-      prisma.moduleRoutine.findMany(),
-      prisma.skillClaim.findMany({
-        where: { collaboratorId: targetCollaboratorId },
-      }),
-      prisma.managerAssessment.findMany({
-        where: { collaboratorId: targetCollaboratorId },
-      }),
+      findCollaboratorWithUserById(targetCollaboratorId),
+      listAllModules(),
+      listSkillClaims({ collaboratorId: targetCollaboratorId }),
+      listAssessments({ collaboratorId: targetCollaboratorId }),
     ]);
 
     if (!collaborator) {
-      return res.status(404).json({ message: 'Colaborador não encontrado.' });
+      return res.status(404).json({ message: 'Colaborador nao encontrado.' });
     }
 
     const entries = modules.map((module) => {
@@ -73,8 +68,8 @@ router.get(
         (item) => item.moduleId === module.id,
       );
 
-      const currentLevel = claim?.currentLevel ?? null;
-      const targetLevel = assessment?.targetLevel ?? null;
+      const currentLevel = claim ? claim.currentLevel : null;
+      const targetLevel = assessment ? assessment.targetLevel : null;
 
       const gap =
         currentLevel !== null && targetLevel !== null

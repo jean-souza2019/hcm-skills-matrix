@@ -1,28 +1,19 @@
 import { Router } from 'express';
 
-import { prisma } from '../lib/prisma';
 import { authenticate } from '../middlewares/authenticate';
+import { findUserSummaryById } from '../repositories/users.repository';
 
 const router = Router();
 
 router.get('/me', authenticate, async (req, res) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'Não autenticado.' });
+    return res.status(401).json({ message: 'Nao autenticado.' });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: req.user.id },
-    select: {
-      id: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      mustChangePassword: true,
-    },
-  });
+  const user = await findUserSummaryById(req.user.id);
 
   if (!user) {
-    return res.status(404).json({ message: 'Usuário não encontrado.' });
+    return res.status(404).json({ message: 'Usuario nao encontrado.' });
   }
 
   return res.json(user);

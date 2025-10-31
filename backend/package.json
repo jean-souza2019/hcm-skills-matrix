@@ -5,14 +5,11 @@
   "description": "Backend API for HCM Skills Matrix",
   "main": "dist/main.js",
   "scripts": {
-    "dev": " ts-node-dev --respawn --transpile-only src/main.ts",
+    "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "build:exe": "yarn build && pkg dist/main.js --targets node18-win-x64 --output build/api.exe",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:generate": "prisma generate",
-    "prisma:reset": "prisma migrate reset --force --skip-generate",
-    "db:seed": "prisma db seed",
+    "db:seed": "ts-node --project tsconfig.json src/scripts/seed.ts",
     "test": "echo \"No tests defined yet\""
   },
   "keywords": [],
@@ -21,28 +18,21 @@
   "engines": {
     "node": ">=18.18.0"
   },
-  "prisma": {
-    "seed": "ts-node --project tsconfig.json prisma/seed.ts"
-  },
   "pkg": {
-    "assets": [
-      "node_modules/.prisma/client/**/*",
-      "prisma/schema.prisma"
-    ],
-    "scripts": [
-      "node_modules/.prisma/client/**/*.js",
-      "node_modules/.prisma/client/**/*.mjs"
-    ]
+    "assets": [],
+    "scripts": []
   },
   "dependencies": {
-    "@prisma/client": "^6.17.1",
     "bcryptjs": "^3.0.2",
+    "cuid": "^2.1.8",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "zod": "^4.1.12"
   },
   "devDependencies": {
@@ -52,7 +42,6 @@
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.9.1",
     "pkg": "^5.8.1",
-    "prisma": "^6.17.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"

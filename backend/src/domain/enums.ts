@@ -1,0 +1,11 @@
+export enum Role {
+  MASTER = 'MASTER',
+  COLABORADOR = 'COLABORADOR',
+}
+
+export enum SkillLevel {
+  NAO_ATENDE = 'NAO_ATENDE',
+  ATENDE = 'ATENDE',
+  IMPLANTA_SOZINHO = 'IMPLANTA_SOZINHO',
+  ESPECIALISTA = 'ESPECIALISTA',
+}

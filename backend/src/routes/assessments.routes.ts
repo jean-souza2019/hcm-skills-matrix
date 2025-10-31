@@ -1,11 +1,20 @@
-import { Role, SkillLevel } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
 
-import { prisma } from '../lib/prisma';
+import { Role, SkillLevel } from '../domain/enums';
 import { authenticate } from '../middlewares/authenticate';
 import { authorizeRoles } from '../middlewares/authorize';
 import { validate } from '../middlewares/validate';
+import {
+  listAssessments,
+  upsertAssessment,
+} from '../repositories/assessments.repository';
+import {
+  createCareerPlan,
+  deleteCareerPlan,
+  listCareerPlans,
+  updateCareerPlan,
+} from '../repositories/career-plans.repository';
 import { requireCollaboratorProfile } from '../utils/collaborator';
 
 const router = Router();
@@ -29,14 +38,6 @@ const careerPlanSchema = z.object({
   moduleIds: z.array(z.string().cuid()).optional(),
 });
 
-const careerPlanInclude = {
-  modules: {
-    include: {
-      module: true,
-    },
-  },
-} as const;
-
 router.post(
   '/',
   authenticate,
@@ -45,26 +46,11 @@ router.post(
   async (req, res) => {
     const payload = req.body as z.infer<typeof assessmentSchema>;
 
-    const assessment = await prisma.managerAssessment.upsert({
-      where: {
-        collaboratorId_moduleId: {
-          collaboratorId: payload.collaboratorId,
-          moduleId: payload.moduleId,
-        },
-      },
-      update: {
-        targetLevel: payload.targetLevel,
-        comment: payload.comment ?? undefined,
-      },
-      create: {
-        collaboratorId: payload.collaboratorId,
-        moduleId: payload.moduleId,
-        targetLevel: payload.targetLevel,
-        comment: payload.comment ?? undefined,
-      },
-      include: {
-        module: true,
-      },
+    const assessment = await upsertAssessment({
+      collaboratorId: payload.collaboratorId,
+      moduleId: payload.moduleId,
+      targetLevel: payload.targetLevel,
+      comment: payload.comment ?? null,
     });
 
     return res.status(201).json(assessment);
@@ -81,13 +67,8 @@ router.get(
       typeof assessmentQuerySchema
     >;
 
-    const assessments = await prisma.managerAssessment.findMany({
-      where: {
-        ...(collaboratorId ? { collaboratorId } : {}),
-      },
-      include: {
-        module: true,
-      },
+    const assessments = await listAssessments({
+      collaboratorId: collaboratorId ?? undefined,
     });
 
     return res.json(assessments);
@@ -101,19 +82,13 @@ router.post(
   validate(careerPlanSchema),
   async (req, res) => {
     const payload = req.body as z.infer<typeof careerPlanSchema>;
-    const moduleIds = payload.moduleIds ?? [];
 
-    const plan = await prisma.careerPlan.create({
-      data: {
-        collaboratorId: payload.collaboratorId,
-        objectives: payload.objectives,
-        dueDate: payload.dueDate ?? undefined,
-        notes: payload.notes ?? undefined,
-        modules: {
-          create: moduleIds.map((moduleId) => ({ moduleId })),
-        },
-      },
-      include: careerPlanInclude,
+    const plan = await createCareerPlan({
+      collaboratorId: payload.collaboratorId,
+      objectives: payload.objectives,
+      dueDate: payload.dueDate ? payload.dueDate.toISOString() : null,
+      notes: payload.notes ?? null,
+      moduleIds: payload.moduleIds ?? [],
     });
 
     return res.status(201).json(plan);
@@ -129,57 +104,33 @@ router.put(
     const { id } = req.params;
     const payload = req.body as Partial<z.infer<typeof careerPlanSchema>>;
 
-    const data: Record<string, unknown> = {};
+    const hasScalarUpdates =
+      payload.collaboratorId !== undefined ||
+      payload.objectives !== undefined ||
+      payload.dueDate !== undefined ||
+      payload.notes !== undefined;
 
-    if (payload.collaboratorId) {
-      data.collaboratorId = payload.collaboratorId;
-    }
-
-    if (payload.objectives) {
-      data.objectives = payload.objectives;
-    }
-
-    if (payload.dueDate !== undefined) {
-      data.dueDate = payload.dueDate ?? null;
-    }
-
-    if (payload.notes !== undefined) {
-      data.notes = payload.notes ?? null;
-    }
-
-    const hasScalarUpdates = Object.keys(data).length > 0;
     const hasModuleUpdate = Array.isArray(payload.moduleIds);
 
     if (!hasScalarUpdates && !hasModuleUpdate) {
-      return res.status(400).json({
-        message: 'Informe pelo menos um campo para atualizar.',
-      });
+      return res
+        .status(400)
+        .json({ message: 'Informe pelo menos um campo para atualizar.' });
     }
 
-    const moduleIds = hasModuleUpdate ? payload.moduleIds ?? [] : null;
-
-    const plan = await prisma.$transaction(async (tx) => {
-      if (hasModuleUpdate && moduleIds) {
-        await tx.careerPlanModule.deleteMany({ where: { careerPlanId: id } });
-        if (moduleIds.length > 0) {
-          await tx.careerPlanModule.createMany({
-            data: moduleIds.map((moduleId) => ({ careerPlanId: id, moduleId })),
-          });
-        }
-      }
-
-      if (hasScalarUpdates) {
-        await tx.careerPlan.update({
-          where: { id },
-          data,
-        });
-      }
-
-      return tx.careerPlan.findUnique({
-        where: { id },
-        include: careerPlanInclude,
-      });
+    const plan = await updateCareerPlan(id, {
+      collaboratorId: payload.collaboratorId,
+      objectives: payload.objectives,
+      dueDate: payload.dueDate === undefined ? undefined : payload.dueDate ? payload.dueDate.toISOString() : null,
+      notes: payload.notes === undefined ? undefined : payload.notes ?? null,
+      moduleIds: hasModuleUpdate ? payload.moduleIds ?? [] : undefined,
     });
+
+    if (!plan) {
+      return res
+        .status(404)
+        .json({ message: 'Plano de carreira nao encontrado.' });
+    }
 
     return res.json(plan);
   },
@@ -192,10 +143,7 @@ router.delete(
   async (req, res) => {
     const { id } = req.params;
 
-    await prisma.$transaction(async (tx) => {
-      await tx.careerPlanModule.deleteMany({ where: { careerPlanId: id } });
-      await tx.careerPlan.delete({ where: { id } });
-    });
+    await deleteCareerPlan(id);
 
     return res.status(204).send();
   },
@@ -222,16 +170,14 @@ router.get(
         const profile = await requireCollaboratorProfile(user.id);
         targetCollaboratorId = profile.id;
       } catch (error) {
-        return res.status(400).json({
-          message: error instanceof Error ? error.message : 'Perfil inexistente.',
-        });
+        const message =
+          error instanceof Error ? error.message : 'Perfil inexistente.';
+        return res.status(400).json({ message });
       }
     }
 
-    const plans = await prisma.careerPlan.findMany({
-      where: targetCollaboratorId ? { collaboratorId: targetCollaboratorId } : {},
-      orderBy: { createdAt: 'desc' },
-      include: careerPlanInclude,
+    const plans = await listCareerPlans({
+      collaboratorId: targetCollaboratorId ?? undefined,
     });
 
     return res.json(plans);

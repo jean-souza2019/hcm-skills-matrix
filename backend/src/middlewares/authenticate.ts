@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
 import { runtimeEnv } from '../config/env';
-import { prisma } from '../lib/prisma';
+import { findUserById } from '../repositories/users.repository';
 
 interface TokenPayload extends jwt.JwtPayload {
   sub: string;
@@ -18,7 +18,7 @@ export async function authenticate(
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Token de autenticação ausente.' });
+    return res.status(401).json({ message: 'Token de autenticacao ausente.' });
   }
 
   const token = authHeader.replace('Bearer ', '');
@@ -26,12 +26,10 @@ export async function authenticate(
   try {
     const decoded = jwt.verify(token, runtimeEnv.JWT_SECRET) as TokenPayload;
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.sub },
-    });
+    const user = await findUserById(decoded.sub);
 
     if (!user) {
-      return res.status(401).json({ message: 'Usuário não encontrado.' });
+      return res.status(401).json({ message: 'Usuario nao encontrado.' });
     }
 
     req.user = {
@@ -43,6 +41,6 @@ export async function authenticate(
 
     return next();
   } catch (error) {
-    return res.status(401).json({ message: 'Token inválido.' });
+    return res.status(401).json({ message: 'Token invalido.' });
   }
 }

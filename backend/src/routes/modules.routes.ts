@@ -1,11 +1,17 @@
-import { Role } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
 
-import { prisma } from '../lib/prisma';
+import { Role } from '../domain/enums';
 import { authenticate } from '../middlewares/authenticate';
 import { authorizeRoles } from '../middlewares/authorize';
 import { validate } from '../middlewares/validate';
+import {
+  createModule,
+  deleteModule,
+  findModuleById,
+  listModules,
+  updateModule,
+} from '../repositories/modules.repository';
 
 const router = Router();
 
@@ -62,12 +68,10 @@ router.post(
   async (req, res) => {
     const payload = req.body as z.infer<typeof moduleSchema>;
 
-    const module = await prisma.moduleRoutine.create({
-      data: {
-        code: payload.code.toUpperCase(),
-        description: payload.description,
-        observation: payload.observation ?? undefined,
-      },
+    const module = await createModule({
+      code: payload.code,
+      description: payload.description,
+      observation: payload.observation ?? null,
     });
 
     return res.status(201).json(module);
@@ -87,39 +91,29 @@ router.get(
     const codeFilter = normalizeCodeFilter(code);
     const descriptionFilter = description?.trim();
 
-    const where = {
-      ...(codeFilter
-        ? codeFilter.exact.length > 1
-          ? { code: { in: codeFilter.exact } }
-          : {
-              code: codeFilter.partial
-                ? {
-                    contains: codeFilter.partial,
-                  }
-                : { in: codeFilter.exact },
-            }
-        : {}),
-      ...(descriptionFilter
-        ? {
-            description: {
-              contains: descriptionFilter,
-            },
-          }
-        : {}),
-    };
+    let codeExact: string[] | undefined;
+    let codeContains: string | undefined;
 
-    const [total, items] = await Promise.all([
-      prisma.moduleRoutine.count({ where }),
-      prisma.moduleRoutine.findMany({
-        where,
-        orderBy: { code: 'asc' },
-        skip: (page - 1) * perPage,
-        take: perPage,
-      }),
-    ]);
+    if (codeFilter) {
+      if (codeFilter.exact.length > 1) {
+        codeExact = codeFilter.exact;
+      } else if (codeFilter.partial) {
+        codeContains = codeFilter.partial;
+      } else {
+        codeExact = codeFilter.exact;
+      }
+    }
+
+    const { data, total } = await listModules({
+      page,
+      perPage,
+      codeExact,
+      codeContains,
+      description: descriptionFilter,
+    });
 
     return res.json({
-      data: items,
+      data,
       meta: {
         page,
         perPage,
@@ -137,12 +131,10 @@ router.get(
   async (req, res) => {
     const { id } = req.params;
 
-    const module = await prisma.moduleRoutine.findUnique({
-      where: { id },
-    });
+    const module = await findModuleById(id);
 
     if (!module) {
-      return res.status(404).json({ message: 'Módulo não encontrado.' });
+      return res.status(404).json({ message: 'Modulo nao encontrado.' });
     }
 
     return res.json(module);
@@ -158,14 +150,15 @@ router.put(
     const { id } = req.params;
     const payload = req.body as z.infer<typeof moduleSchema>;
 
-    const module = await prisma.moduleRoutine.update({
-      where: { id },
-      data: {
-        code: payload.code.toUpperCase(),
-        description: payload.description,
-        observation: payload.observation ?? undefined,
-      },
+    const module = await updateModule(id, {
+      code: payload.code,
+      description: payload.description,
+      observation: payload.observation ?? null,
     });
+
+    if (!module) {
+      return res.status(404).json({ message: 'Modulo nao encontrado.' });
+    }
 
     return res.json(module);
   },
@@ -178,9 +171,7 @@ router.delete(
   async (req, res) => {
     const { id } = req.params;
 
-    await prisma.moduleRoutine.delete({
-      where: { id },
-    });
+    await deleteModule(id);
 
     return res.status(204).send();
   },

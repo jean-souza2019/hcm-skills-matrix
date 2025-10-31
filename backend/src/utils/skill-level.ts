@@ -1,4 +1,4 @@
-import { SkillLevel } from '@prisma/client';
+import { SkillLevel } from '../domain/enums';
 
 export const skillLevelOrder: SkillLevel[] = [
   SkillLevel.NAO_ATENDE,

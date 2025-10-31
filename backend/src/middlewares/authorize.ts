@@ -1,11 +1,11 @@
-import type { Role } from '@prisma/client';
 import type { NextFunction, Request, Response } from 'express';
+
+import type { Role } from '../domain/enums';
 
 export function authorizeRoles(...allowedRoles: Role[]) {
   return (req: Request, res: Response, next: NextFunction) => {
-    console.log('User Role:', req.user?.role);
     if (!req.user) {
-      return res.status(401).json({ message: 'Não autenticado.' });
+      return res.status(401).json({ message: 'Nao autenticado.' });
     }
 
     if (!allowedRoles.includes(req.user.role)) {
@@ -15,3 +15,4 @@ export function authorizeRoles(...allowedRoles: Role[]) {
     return next();
   };
 }
+

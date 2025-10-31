@@ -1,9 +1,18 @@
-import { Role, SkillLevel } from '@prisma/client';
 import { Router } from 'express';
 
-import { prisma } from '../lib/prisma';
+import { Role, SkillLevel } from '../domain/enums';
 import { authenticate } from '../middlewares/authenticate';
 import { authorizeRoles } from '../middlewares/authorize';
+import { countCollaborators } from '../repositories/collaborators.repository';
+import { listAllModules } from '../repositories/modules.repository';
+import {
+  listAllAssessments,
+  listAssessments,
+} from '../repositories/assessments.repository';
+import {
+  listAllSkillClaims,
+  listSkillClaims,
+} from '../repositories/skill-claims.repository';
 import { skillLevelScore } from '../utils/skill-level';
 import { requireCollaboratorProfile } from '../utils/collaborator';
 
@@ -18,14 +27,10 @@ router.get(
       try {
         const profile = await requireCollaboratorProfile(req.user.id);
 
-        const [totalModules, claims, assessments] = await Promise.all([
-          prisma.moduleRoutine.count(),
-          prisma.skillClaim.findMany({
-            where: { collaboratorId: profile.id },
-          }),
-          prisma.managerAssessment.findMany({
-            where: { collaboratorId: profile.id },
-          }),
+        const [modules, claims, assessments] = await Promise.all([
+          listAllModules(),
+          listSkillClaims({ collaboratorId: profile.id }),
+          listAssessments({ collaboratorId: profile.id }),
         ]);
 
         const claimMap = new Map<string, SkillLevel>();
@@ -52,7 +57,7 @@ router.get(
 
         return res.json({
           totalCollaborators: 1,
-          totalModules,
+          totalModules: modules.length,
           totalClaims: claims.length,
           totalAssessments: assessments.length,
           averageGap,
@@ -61,27 +66,17 @@ router.get(
         const message =
           error instanceof Error
             ? error.message
-            : 'Não foi possível localizar o perfil do colaborador.';
+            : 'Nao foi possivel localizar o perfil do colaborador.';
         return res.status(400).json({ message });
       }
     }
 
-    const [totalCollaborators, totalModules, totalClaims, assessments, claims] =
-      await Promise.all([
-        prisma.collaboratorProfile.count(),
-        prisma.moduleRoutine.count(),
-        prisma.skillClaim.count(),
-        prisma.managerAssessment.findMany(),
-        prisma.skillClaim.findMany({
-          select: {
-            collaboratorId: true,
-            moduleId: true,
-            currentLevel: true,
-          },
-        }),
-      ]);
-
-    const totalAssessments = assessments.length;
+    const [totalCollaborators, modules, claims, assessments] = await Promise.all([
+      countCollaborators(),
+      listAllModules(),
+      listAllSkillClaims(),
+      listAllAssessments(),
+    ]);
 
     const claimMap = new Map<string, SkillLevel>();
     claims.forEach((claim) => {
@@ -113,9 +108,9 @@ router.get(
 
     return res.json({
       totalCollaborators,
-      totalModules,
-      totalClaims,
-      totalAssessments,
+      totalModules: modules.length,
+      totalClaims: claims.length,
+      totalAssessments: assessments.length,
       averageGap,
     });
   },
@@ -131,11 +126,9 @@ router.get(
         const profile = await requireCollaboratorProfile(req.user.id);
 
         const [claims, assessments, modules] = await Promise.all([
-          prisma.skillClaim.findMany({ where: { collaboratorId: profile.id } }),
-          prisma.managerAssessment.findMany({
-            where: { collaboratorId: profile.id },
-          }),
-          prisma.moduleRoutine.findMany(),
+          listSkillClaims({ collaboratorId: profile.id }),
+          listAssessments({ collaboratorId: profile.id }),
+          listAllModules(),
         ]);
 
         const levelDistribution = Object.values(SkillLevel).map((level) => ({
@@ -152,7 +145,8 @@ router.get(
           }
 
           const gap =
-            skillLevelScore[assessment.targetLevel] - skillLevelScore[claim.currentLevel];
+            skillLevelScore[assessment.targetLevel] -
+            skillLevelScore[claim.currentLevel];
 
           return {
             moduleId: module.id,
@@ -174,15 +168,15 @@ router.get(
         const message =
           error instanceof Error
             ? error.message
-            : 'Não foi possível localizar o perfil do colaborador.';
+            : 'Nao foi possivel localizar o perfil do colaborador.';
         return res.status(400).json({ message });
       }
     }
 
     const [claims, assessments, modules] = await Promise.all([
-      prisma.skillClaim.findMany(),
-      prisma.managerAssessment.findMany(),
-      prisma.moduleRoutine.findMany(),
+      listAllSkillClaims(),
+      listAllAssessments(),
+      listAllModules(),
     ]);
 
     const levelDistribution = Object.values(SkillLevel).map((level) => ({

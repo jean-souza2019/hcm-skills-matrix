@@ -6,10 +6,22 @@ async function bootstrap() {
   try {
     logInfo('Starting backend application');
 
-    const [{ runtimeEnv }, { createApp }] = await Promise.all([
+    const [{ runtimeEnv }, { createApp }, databaseModule] = await Promise.all([
       import('./config/env'),
       import('./app'),
+      import('./lib/database'),
     ]);
+
+    await databaseModule.initializeDatabase();
+
+    if (databaseModule.wasDatabaseCreatedOnInit()) {
+      logInfo('Database file not found. Running initial seed...');
+      const { seedDefaultData } = await import('./seed');
+      const result = await seedDefaultData();
+      logInfo(
+        `Seed completed with admin ${result.adminEmail}. Default password: ${result.adminPassword}`,
+      );
+    }
 
     const app = createApp();
     const port = runtimeEnv.PORT;
