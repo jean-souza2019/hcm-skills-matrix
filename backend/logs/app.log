@@ -1,0 +1,3 @@
+2025-10-30T23:05:08.353Z | INFO | Bootstrapping application | { pid: 7436, port: 4002, nodeVersion: 'v22.21.1', logDestination: { directory: 'C:\\Users\\Usuario\\Downloads\\projects\\hcm-skills-matrix\\backend\\logs', file: 'C:\\Users\\Usuario\\Downloads\\projects\\hcm-skills-matrix\\backend\\logs\\app.log', fallback: false, active: true } }
+2025-10-30T23:05:08.380Z | INFO | Server running on http://localhost:4002
+2025-10-30T23:05:08.381Z | INFO | Server running on http://localhost:4002

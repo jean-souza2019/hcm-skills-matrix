@@ -8,7 +8,7 @@
     "dev": " ts-node-dev --respawn --transpile-only src/main.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
-    "build:exe": "yarn build && pkg dist/main.js --targets node18-win-x64 --output build/api.exe",
+    "build:exe": "yarn prisma generate && yarn build && node scripts/pkg-postbuild.cjs",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:reset": "prisma migrate reset --force --skip-generate",
@@ -24,12 +24,20 @@
   "prisma": {
     "seed": "ts-node --project tsconfig.json prisma/seed.ts"
   },
-  "pkg": {
-    "assets": [
-      "node_modules/.prisma/client/**/*",
-      "prisma/schema.prisma"
-    ]
-  },
+   "pkg": {                                                                         
+      "scripts": [
+        "node_modules/.prisma/client/index.js",                                      
+        "node_modules/.prisma/client/default.js",                                    
+        "node_modules/.prisma/client/edge.js",                                       
+        "node_modules/@prisma/client/runtime/**/*.js"                                
+      ],                                                                             
+      "assets": [                                                                    
+        "node_modules/.prisma/client/query_engine-*.node",                           
+        "node_modules/.prisma/client/*.wasm",                                        
+        "node_modules/.prisma/client/schema.prisma",                                 
+        "prisma/schema.prisma"                                                       
+      ]                                                                              
+    },
   "dependencies": {
     "@prisma/client": "^6.17.1",
     "bcryptjs": "^3.0.2",

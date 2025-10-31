@@ -12,6 +12,7 @@ import { reportsRoutes } from './routes/reports.routes';
 import { skillsRoutes } from './routes/skills.routes';
 import { usersRoutes } from './routes/users.routes';
 import { errorHandler } from './middlewares/error-handler';
+import { httpLogStream } from './lib/logger';
 
 export function createApp(): Express {
   const app = express();
@@ -20,6 +21,7 @@ export function createApp(): Express {
   app.use(cors());
   app.use(express.json({ limit: '2mb' }));
   app.use(morgan('dev'));
+  app.use(morgan('combined', { stream: httpLogStream }));
 
   app.get('/healths', (_req, res) => res.json({ status: 'ok' }));
 
