@@ -8,7 +8,7 @@
     "dev": " ts-node-dev --respawn --transpile-only src/main.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
-    "build:exe": "yarn build && pkg dist/main.js --targets node18-win-x64 --output build/api.exe",
+    "build:exe": "yarn build && node scripts/build-exe.cjs",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:reset": "prisma migrate reset --force --skip-generate",
@@ -23,12 +23,6 @@
   },
   "prisma": {
     "seed": "ts-node --project tsconfig.json prisma/seed.ts"
-  },
-  "pkg": {
-    "assets": [
-      "node_modules/.prisma/client/**/*",
-      "prisma/schema.prisma"
-    ]
   },
   "dependencies": {
     "@prisma/client": "^6.17.1",
@@ -47,7 +41,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.9.1",
-    "pkg": "^5.8.1",
+    "postject": "1.0.0-alpha.6",
     "prisma": "^6.17.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
