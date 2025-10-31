@@ -118,11 +118,11 @@
     "deletePlanConfirm": "Deseja remover este plano de carreira?"
   },
   "reports": {
-    "title": "Relatórios",
-    "coverage": "Cobertura por colaborador",
-    "exportCsv": "Exportar CSV",
-    "exportPdf": "Exportar PDF",
-    "gap": "Gap",
+    "title": "Relatórios de Competências",
+    "coverage": "Mapa de Competências por Colaborador",
+    "exportCsv": "Baixar relatório em CSV",
+    "exportPdf": "Baixar relatório em PDF",
+    "gap": "Gap de Competência",
     "emptyExport": "Selecione um colaborador e aplique filtros válidos para exportar."
   },
   "passwordChange": {

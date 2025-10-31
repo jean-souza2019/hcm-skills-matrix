@@ -72,6 +72,16 @@
       "electron/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "../backend/build",
+        "to": "backend",
+        "filter": [
+          "api.exe",
+          "data/**"
+        ]
+      }
+    ],
     "asar": true,
     "win": {
       "target": ["nsis"],

@@ -5,6 +5,8 @@ import { z } from 'zod';
 
 config();
 
+const processWithPkg = process as NodeJS.Process & { pkg?: unknown };
+
 const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
@@ -18,6 +20,18 @@ const envSchema = z.object({
   DATABASE_URL: z.string().default('file:./data/app.db'),
 });
 
+const resolveBasePath = () => {
+  if (process.env.DATABASE_BASE_PATH) {
+    return path.resolve(process.env.DATABASE_BASE_PATH);
+  }
+
+  if (processWithPkg.pkg) {
+    return path.dirname(process.execPath);
+  }
+
+  return process.cwd();
+};
+
 const resolveDatabaseFile = (url: string): string => {
   let target = url.trim();
 
@@ -29,14 +43,16 @@ const resolveDatabaseFile = (url: string): string => {
     return target;
   }
 
+  const basePath = resolveBasePath();
   const cleaned = target.replace(/^\.\/+/, '');
-  const candidate = path.resolve(process.cwd(), cleaned.length > 0 ? cleaned : target);
+  const candidate = path.resolve(basePath, cleaned.length > 0 ? cleaned : target);
 
   if (fs.existsSync(candidate)) {
+
     return candidate;
   }
 
-  const fallback = path.resolve(process.cwd(), 'prisma', cleaned);
+  const fallback = path.resolve(basePath, 'prisma', cleaned);
 
   if (fs.existsSync(fallback)) {
     return fallback;

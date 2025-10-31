@@ -146,6 +146,13 @@ export function ReportsPage() {
     displayEntries[0]?.collaboratorName ??
     (filteredCollaborators.find((item) => item.id === selectedCollaboratorId)?.fullName ?? '')
 
+  const reportBaseFileName =
+    selectedCollaboratorName && selectedCollaboratorName.trim().length > 0
+      ? `relatorio-competencias-${toFileSafeSlug(selectedCollaboratorName)}`
+      : selectedCollaboratorId
+          ? `relatorio-competencias-${selectedCollaboratorId}`
+          : 'relatorio-competencias'
+
   const hasEntries = displayEntries.length > 0
 
   const handleDownloadCsv = async () => {
@@ -157,13 +164,13 @@ export function ReportsPage() {
     try {
       setIsDownloadingCsv(true)
       const header = [
-        'colaborador',
-        'module_code',
-        'module_description',
-        'category',
-        'current_level',
-        'target_level',
-        'gap',
+        'Colaborador',
+        'Código do módulo',
+        'Descrição do módulo',
+        'Categoria',
+        'Nível atual',
+        'Nível alvo',
+        'Gap de competência',
       ]
 
       const escapeCsv = (value: string | number | null | undefined) => {
@@ -190,7 +197,7 @@ export function ReportsPage() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.setAttribute('download', `coverage-${selectedCollaboratorId}.csv`)
+      link.setAttribute('download', `${reportBaseFileName}.csv`)
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -221,7 +228,7 @@ export function ReportsPage() {
 
       const doc = new jsPdfConstructor()
       doc.setFontSize(16)
-      doc.text(t('reports.title'), 14, 18)
+      doc.text(t('reports.coverage'), 14, 18)
       if (selectedCollaboratorName) {
         doc.setFontSize(12)
         doc.text(`${t('filters.collaborator')}: ${selectedCollaboratorName}`, 14, 28)
@@ -253,7 +260,7 @@ export function ReportsPage() {
         ]),
       })
 
-      doc.save(`coverage-${selectedCollaboratorId}.pdf`)
+      doc.save(`${reportBaseFileName}.pdf`)
     } catch (error) {
       console.error(error)
       enqueueSnackbar('Não foi possível exportar o PDF.', { variant: 'error' })
@@ -420,6 +427,15 @@ export function ReportsPage() {
       )}
     </Box>
   )
+}
+
+function toFileSafeSlug(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase()
 }
 
 async function loadScript(src: string) {

@@ -14,7 +14,7 @@ export function AppProviders({ children }: PropsWithChildren) {
         <CssBaseline />
         <SnackbarProvider
           maxSnack={4}
-          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           autoHideDuration={4000}
         >
           {children}

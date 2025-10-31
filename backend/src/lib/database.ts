@@ -1,14 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import sqlite3 from 'sqlite3';
-import { Database, open } from 'sqlite';
+
+
+type SqliteModule = typeof import('sqlite3');
+type SqliteDatabase = import('sqlite').Database<any, any>;
 
 import { runtimeEnv } from '../config/env';
+import { prepareSqliteNativeBinding } from './sqlite-native';
 
-type SqliteDatabase = Database<sqlite3.Database, sqlite3.Statement>;
 
 let client: SqliteDatabase | null = null;
 let createdOnInit = false;
+let openFn: typeof import('sqlite').open | null = null;
+let sqlite3Driver: SqliteModule | null = null;
 
 const schemaSql = `
 PRAGMA journal_mode = WAL;
@@ -110,6 +114,25 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 `;
 
+const getSqliteDependencies = async () => {
+  if (!openFn || !sqlite3Driver) {
+    prepareSqliteNativeBinding();
+
+    const [{ open }, sqlite3Module] = await Promise.all([
+      import('sqlite'),
+      import('sqlite3'),
+    ]);
+
+    openFn = open;
+    sqlite3Driver = (sqlite3Module.default ?? sqlite3Module) as SqliteModule;
+  }
+
+  return {
+    open: openFn!,
+    sqlite3: sqlite3Driver!,
+  };
+};
+
 export async function initializeDatabase(): Promise<SqliteDatabase> {
   if (client) {
     return client;
@@ -119,9 +142,11 @@ export async function initializeDatabase(): Promise<SqliteDatabase> {
   const existedBefore = fs.existsSync(databaseFile);
   fs.mkdirSync(path.dirname(databaseFile), { recursive: true });
 
+  const { open, sqlite3 } = await getSqliteDependencies();
+
   client = await open({
     filename: databaseFile,
-    driver: sqlite3.Database,
+    driver: sqlite3.Database as any,
   });
 
   await client.exec(schemaSql);

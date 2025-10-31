@@ -14,3 +14,6 @@ build
 coverage
 *.log
 data/
+
+
+temp*

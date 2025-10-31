@@ -49,6 +49,7 @@ Backend REST API for the skills matrix product. Implemented with Node.js, Expres
 - When the API starts and the database file is brand new, the default seed (admin + demo modules) runs automatically.
 - The default file path is resolved from `DATABASE_URL`. For `file:./data/app.db` the file will be created inside `backend/data/`.
 - Existing Prisma migrations are no longer used. If you have legacy data in `prisma/dev.db`, copy it to the new location before starting the API.
+- When running the packaged executable, the sqlite native library is extracted next to the binary; keep the generated `sqlite3` folder alongside the `.exe`.
 - After bootstrapping the database file you can run `yarn db:seed` to add the default admin user and demo modules.
 
 ## Project structure

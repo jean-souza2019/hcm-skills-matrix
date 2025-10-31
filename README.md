@@ -1,0 +1,1 @@
+- When running the packaged executable, the sqlite native library is extracted next to the binary; keep the generated `sqlite3` folder alongside the `.exe`.
